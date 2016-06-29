@@ -12,13 +12,13 @@ if(!empty($token))
 {
 	header('Content-Type: application/pdf');
 	
-	$linkItem = \OC::$server->getShareManager()->getShareByToken($token);
-	$owner = $linkItem->getShareOwner();
+	$linkItem = \OCP\Share::getShareByToken($token, false);
+	$owner = $linkItem['uid_owner'];
 	
 	\OC\Files\Filesystem::tearDown();
 	\OC\Files\Filesystem::init($owner, '/' . $owner . '/files');
 	
-	$path = '/' . \OC\Files\Filesystem::getPath($linkItem->getNodeId());
+	$path = '/' . \OC\Files\Filesystem::getPath($linkItem['file_source']);
 	
 	$filecontents = \OC\Files\Filesystem::file_get_contents($path);
 	

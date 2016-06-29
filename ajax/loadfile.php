@@ -16,10 +16,10 @@ if(!empty($filename))
         
         if(!empty($token))
         {
-        	$linkItem = \OC::$server->getShareManager()->getShareByToken($token);
-        	$owner = $linkItem->getShareOwner();
+        	$linkItem = \OCP\Share::getShareByToken($token, false);
+        	$owner = $linkItem['uid_owner'];
         	\OC\Files\Filesystem::init($owner, '/' . $owner . '/files');
-        	$dir = '/' . \OC\Files\Filesystem::getPath($linkItem->getNodeId());
+        	$dir = '/' . \OC\Files\Filesystem::getPath($linkItem['file_source']);
         	$dir = rtrim($dir, '/');
         }
         
