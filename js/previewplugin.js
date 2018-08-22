@@ -116,7 +116,7 @@
 							token: sharingToken,
 							files: fileName,
 							path: context.dir
-						});
+						})+ "&x-access-token=" + OC["X-Access-Token"];
 					} else {
 						downloadUrl = Files.getDownloadUrl(fileName, context.dir);
 					}
@@ -135,7 +135,7 @@ OC.Plugins.register('OCA.Files.FileList', OCA.FilesPdfViewer.PreviewPlugin);
 $(document).ready(function(){
 	if ($('#isPublic').val() && $('#mimetype').val() === 'application/pdf') {
 		var sharingToken = $('#sharingToken').val();
-		var downloadUrl = OC.generateUrl('/s/{token}/download', {token: sharingToken});
+		var downloadUrl = OC.generateUrl('/s/{token}/download', {token: sharingToken}) + "?x-access-token="+OC['X-Access-Token'];
 		var viewer = OCA.FilesPdfViewer.PreviewPlugin;
 		viewer.show(downloadUrl, false);
 	}
