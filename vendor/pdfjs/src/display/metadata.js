@@ -13,82 +13,149 @@
  * limitations under the License.
  */
 
-function fixMetadata(meta) {
-  return meta.replace(/>\\376\\377([^<]+)/g, function(all, codes) {
-    var bytes = codes.replace(/\\([0-3])([0-7])([0-7])/g,
-                              function(code, d1, d2, d3) {
-      return String.fromCharCode(d1 * 64 + d2 * 8 + d3 * 1);
-    });
-    var chars = '';
-    for (var i = 0; i < bytes.length; i += 2) {
-      var code = bytes.charCodeAt(i) * 256 + bytes.charCodeAt(i + 1);
-      chars += (code >= 32 && code < 127 && code !== 60 && code !== 62 &&
-        code !== 38) ? String.fromCharCode(code) :
-        '&#x' + (0x10000 + code).toString(16).substring(1) + ';';
+import { assert, objectFromEntries } from "../shared/util.js";
+import { SimpleXMLParser } from "../shared/xml_parser.js";
+
+class Metadata {
+  constructor(data) {
+    assert(typeof data === "string", "Metadata: input is not a string");
+
+    // Ghostscript may produce invalid metadata, so try to repair that first.
+    data = this._repair(data);
+
+    // Convert the string to an XML document.
+    const parser = new SimpleXMLParser({ lowerCaseName: true });
+    const xmlDocument = parser.parseFromString(data);
+
+    this._metadataMap = new Map();
+
+    if (xmlDocument) {
+      this._parse(xmlDocument);
     }
-    return '>' + chars;
-  });
-}
-
-function Metadata(meta) {
-  if (typeof meta === 'string') {
-    // Ghostscript produces invalid metadata
-    meta = fixMetadata(meta);
-
-    var parser = new DOMParser();
-    meta = parser.parseFromString(meta, 'application/xml');
-  } else if (!(meta instanceof Document)) {
-    throw new Error('Metadata: Invalid metadata object');
+    this._data = data;
   }
 
-  this.metaDocument = meta;
-  this.metadata = Object.create(null);
-  this.parse();
-}
+  _repair(data) {
+    // Start by removing any "junk" before the first tag (see issue 10395).
+    return data
+      .replace(/^[^<]+/, "")
+      .replace(/>\\376\\377([^<]+)/g, function (all, codes) {
+        const bytes = codes
+          .replace(/\\([0-3])([0-7])([0-7])/g, function (code, d1, d2, d3) {
+            return String.fromCharCode(d1 * 64 + d2 * 8 + d3 * 1);
+          })
+          .replace(/&(amp|apos|gt|lt|quot);/g, function (str, name) {
+            switch (name) {
+              case "amp":
+                return "&";
+              case "apos":
+                return "'";
+              case "gt":
+                return ">";
+              case "lt":
+                return "<";
+              case "quot":
+                return '"';
+            }
+            throw new Error(`_repair: ${name} isn't defined.`);
+          });
 
-Metadata.prototype = {
-  parse: function Metadata_parse() {
-    var doc = this.metaDocument;
-    var rdf = doc.documentElement;
+        let chars = "";
+        for (let i = 0, ii = bytes.length; i < ii; i += 2) {
+          const code = bytes.charCodeAt(i) * 256 + bytes.charCodeAt(i + 1);
+          if (
+            code >= /* Space = */ 32 &&
+            code < /* Delete = */ 127 &&
+            code !== /* '<' = */ 60 &&
+            code !== /* '>' = */ 62 &&
+            code !== /* '&' = */ 38
+          ) {
+            chars += String.fromCharCode(code);
+          } else {
+            chars += "&#x" + (0x10000 + code).toString(16).substring(1) + ";";
+          }
+        }
 
-    if (rdf.nodeName.toLowerCase() !== 'rdf:rdf') { // Wrapped in <xmpmeta>
+        return ">" + chars;
+      });
+  }
+
+  _getSequence(entry) {
+    const name = entry.nodeName;
+    if (name !== "rdf:bag" && name !== "rdf:seq" && name !== "rdf:alt") {
+      return null;
+    }
+
+    return entry.childNodes.filter(node => node.nodeName === "rdf:li");
+  }
+
+  _getCreators(entry) {
+    if (entry.nodeName !== "dc:creator") {
+      return false;
+    }
+    if (!entry.hasChildNodes()) {
+      return true;
+    }
+
+    // Child must be a Bag (unordered array) or a Seq.
+    const seqNode = entry.childNodes[0];
+    const authors = this._getSequence(seqNode) || [];
+    this._metadataMap.set(
+      entry.nodeName,
+      authors.map(node => node.textContent.trim())
+    );
+
+    return true;
+  }
+
+  _parse(xmlDocument) {
+    let rdf = xmlDocument.documentElement;
+
+    if (rdf.nodeName !== "rdf:rdf") {
+      // Wrapped in <xmpmeta>
       rdf = rdf.firstChild;
-      while (rdf && rdf.nodeName.toLowerCase() !== 'rdf:rdf') {
+      while (rdf && rdf.nodeName !== "rdf:rdf") {
         rdf = rdf.nextSibling;
       }
     }
 
-    var nodeName = (rdf) ? rdf.nodeName.toLowerCase() : null;
-    if (!rdf || nodeName !== 'rdf:rdf' || !rdf.hasChildNodes()) {
+    if (!rdf || rdf.nodeName !== "rdf:rdf" || !rdf.hasChildNodes()) {
       return;
     }
 
-    var children = rdf.childNodes, desc, entry, name, i, ii, length, iLength;
-    for (i = 0, length = children.length; i < length; i++) {
-      desc = children[i];
-      if (desc.nodeName.toLowerCase() !== 'rdf:description') {
+    for (const desc of rdf.childNodes) {
+      if (desc.nodeName !== "rdf:description") {
         continue;
       }
 
-      for (ii = 0, iLength = desc.childNodes.length; ii < iLength; ii++) {
-        if (desc.childNodes[ii].nodeName.toLowerCase() !== '#text') {
-          entry = desc.childNodes[ii];
-          name = entry.nodeName.toLowerCase();
-          this.metadata[name] = entry.textContent.trim();
+      for (const entry of desc.childNodes) {
+        const name = entry.nodeName;
+        if (name === "#text") {
+          continue;
         }
+        if (this._getCreators(entry)) {
+          continue;
+        }
+        this._metadataMap.set(name, entry.textContent.trim());
       }
     }
-  },
+  }
 
-  get: function Metadata_get(name) {
-    return this.metadata[name] || null;
-  },
+  getRaw() {
+    return this._data;
+  }
 
-  has: function Metadata_has(name) {
-    return typeof this.metadata[name] !== 'undefined';
-  },
-};
+  get(name) {
+    return this._metadataMap.get(name) ?? null;
+  }
 
-export {
-  Metadata,
-};
+  getAll() {
+    return objectFromEntries(this._metadataMap);
+  }
+
+  has(name) {
+    return this._metadataMap.has(name);
+  }
+}
+
+export { Metadata };

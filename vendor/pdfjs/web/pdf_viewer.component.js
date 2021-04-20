@@ -13,39 +13,44 @@
  * limitations under the License.
  */
 
-'use strict';
+import {
+  AnnotationLayerBuilder,
+  DefaultAnnotationLayerFactory,
+} from "./annotation_layer_builder.js";
+import {
+  DefaultTextLayerFactory,
+  TextLayerBuilder,
+} from "./text_layer_builder.js";
+import { EventBus, NullL10n, ProgressBar } from "./ui_utils.js";
+import { PDFLinkService, SimpleLinkService } from "./pdf_link_service.js";
+import { DownloadManager } from "./download_manager.js";
+import { GenericL10n } from "./genericl10n.js";
+import { PDFFindController } from "./pdf_find_controller.js";
+import { PDFHistory } from "./pdf_history.js";
+import { PDFPageView } from "./pdf_page_view.js";
+import { PDFSinglePageViewer } from "./pdf_single_page_viewer.js";
+import { PDFViewer } from "./pdf_viewer.js";
 
-var pdfjsLib = require('./pdfjs.js');
-var pdfjsWebPDFViewer = require('./pdf_viewer.js');
-var pdfjsWebPDFPageView = require('./pdf_page_view.js');
-var pdfjsWebPDFLinkService = require('./pdf_link_service.js');
-var pdfjsWebTextLayerBuilder = require('./text_layer_builder.js');
-var pdfjsWebAnnotationLayerBuilder = require('./annotation_layer_builder.js');
-var pdfjsWebPDFHistory = require('./pdf_history.js');
-var pdfjsWebPDFFindController = require('./pdf_find_controller.js');
-var pdfjsWebUIUtils = require('./ui_utils.js');
-var pdfjsWebDownloadManager = require('./download_manager.js');
-var pdfjsWebGenericL10n = require('./genericl10n.js');
+// eslint-disable-next-line no-unused-vars
+const pdfjsVersion = PDFJSDev.eval("BUNDLE_VERSION");
+// eslint-disable-next-line no-unused-vars
+const pdfjsBuild = PDFJSDev.eval("BUNDLE_BUILD");
 
-var PDFJS = pdfjsLib.PDFJS;
-
-PDFJS.PDFViewer = pdfjsWebPDFViewer.PDFViewer;
-PDFJS.PDFPageView = pdfjsWebPDFPageView.PDFPageView;
-PDFJS.PDFLinkService = pdfjsWebPDFLinkService.PDFLinkService;
-PDFJS.TextLayerBuilder = pdfjsWebTextLayerBuilder.TextLayerBuilder;
-PDFJS.DefaultTextLayerFactory =
-  pdfjsWebTextLayerBuilder.DefaultTextLayerFactory;
-PDFJS.AnnotationLayerBuilder =
-  pdfjsWebAnnotationLayerBuilder.AnnotationLayerBuilder;
-PDFJS.DefaultAnnotationLayerFactory =
-  pdfjsWebAnnotationLayerBuilder.DefaultAnnotationLayerFactory;
-PDFJS.PDFHistory = pdfjsWebPDFHistory.PDFHistory;
-PDFJS.PDFFindController = pdfjsWebPDFFindController.PDFFindController;
-PDFJS.EventBus = pdfjsWebUIUtils.EventBus;
-
-PDFJS.DownloadManager = pdfjsWebDownloadManager.DownloadManager;
-PDFJS.ProgressBar = pdfjsWebUIUtils.ProgressBar;
-PDFJS.GenericL10n = pdfjsWebGenericL10n.GenericL10n;
-PDFJS.NullL10n = pdfjsWebUIUtils.NullL10n;
-
-exports.PDFJS = PDFJS;
+export {
+  AnnotationLayerBuilder,
+  DefaultAnnotationLayerFactory,
+  DefaultTextLayerFactory,
+  DownloadManager,
+  EventBus,
+  GenericL10n,
+  NullL10n,
+  PDFFindController,
+  PDFHistory,
+  PDFLinkService,
+  PDFPageView,
+  PDFSinglePageViewer,
+  PDFViewer,
+  ProgressBar,
+  SimpleLinkService,
+  TextLayerBuilder,
+};
